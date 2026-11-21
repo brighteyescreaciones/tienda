@@ -1461,8 +1461,27 @@ app.addEventListener('click',e=>{if(route()==='tienda'&&e.target.closest('a[href
 function goBack(){if(route()==='condiciones'){navigate(beConditionsReturn);return;}if(route().startsWith('producto/')){beRestoreShop=true;navigate('tienda');}else if(route()!=='inicio')navigate('inicio');else if(history.length>1)history.back()}
 document.getElementById('pageBack').onclick=goBack;
 
+/* Estadísticas privadas: una apertura por cada entrada a la ficha de producto. */
+const BE_VISITAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbzfyRPmmVD8sujzOot0FSlrv3-6j7qDm9L8JQY1T6m6OW7TJibaJqXWBK2Cj1n5aBgA/exec';
+let beLastTrackedProduct = null;
+function beTrackProductOpening(currentRoute){
+  // Salir de una ficha permite contar una nueva apertura al regresar.
+  if(!currentRoute.startsWith('producto/')){
+    beLastTrackedProduct = null;
+    return;
+  }
+  const id = currentRoute.slice('producto/'.length).split('/')[0];
+  // Esperar a que Sheets cargue y comprobar que el producto exista.
+  if(!id || !item(id) || beLastTrackedProduct === id) return;
+  beLastTrackedProduct = id;
+  const url = BE_VISITAS_ENDPOINT + '?producto_id=' + encodeURIComponent(id) + '&t=' + Date.now();
+  // Solicitud pública de solo incremento. Respuesta opaca por CORS de Apps Script.
+  // No se reintenta para evitar contabilizar la misma apertura dos veces.
+  fetch(url, {method:'GET', mode:'no-cors', cache:'no-store', keepalive:true}).catch(function(){});
+}
+
 let bePreviousRoute=route(), beConditionsReturn='inicio';
-function render(){const r=route();if(r==='condiciones'&&bePreviousRoute!=='condiciones')beConditionsReturn=bePreviousRoute;if(!r.startsWith('producto/'))document.getElementById('beDetailSticky')?.remove();if(r==='tienda')beRestoreShop=true;document.body.classList.toggle('in-shop',r==='tienda'||r.startsWith('producto/')||r==='condiciones');document.body.classList.toggle('be-on-detail',r.startsWith('producto/'));document.body.classList.toggle('be-monochrome-store',r==='tienda'||r.startsWith('producto/')||r==='carrito'||r==='condiciones');document.getElementById('app').classList.remove('switching');document.getElementById('pageBack').hidden=r==='inicio';document.title=(r==='inicio'?'Inicio':r==='tienda'?'Tienda':r.startsWith('producto/')?'Producto':r==='condiciones'?'Condiciones de compra':'Nosotros')+' | Bright Eyes Creaciones';if(r==='inicio')home();else if(r==='tienda')shop();else if(r.startsWith('producto/'))detail(r.split('/')[1]);else if(r==='nosotros')about();else if(r==='condiciones')conditions();else home();updateCount();if(r==='tienda'&&beRestoreShop){const remembered=beShopScroll;requestAnimationFrame(()=>requestAnimationFrame(()=>{if(route()==='tienda'){window.scrollTo({top:remembered,behavior:'instant'});beShopScroll=window.scrollY||0;beSaveShopMemory()}beRestoreShop=false;}))}else{window.scrollTo({top:0,behavior:'instant'})}bePreviousRoute=r;}
+function render(){const r=route();if(r==='condiciones'&&bePreviousRoute!=='condiciones')beConditionsReturn=bePreviousRoute;if(!r.startsWith('producto/'))document.getElementById('beDetailSticky')?.remove();if(r==='tienda')beRestoreShop=true;document.body.classList.toggle('in-shop',r==='tienda'||r.startsWith('producto/')||r==='condiciones');document.body.classList.toggle('be-on-detail',r.startsWith('producto/'));document.body.classList.toggle('be-monochrome-store',r==='tienda'||r.startsWith('producto/')||r==='carrito'||r==='condiciones');document.getElementById('app').classList.remove('switching');document.getElementById('pageBack').hidden=r==='inicio';document.title=(r==='inicio'?'Inicio':r==='tienda'?'Tienda':r.startsWith('producto/')?'Producto':r==='condiciones'?'Condiciones de compra':'Nosotros')+' | Bright Eyes Creaciones';if(r==='inicio')home();else if(r==='tienda')shop();else if(r.startsWith('producto/'))detail(r.split('/')[1]);else if(r==='nosotros')about();else if(r==='condiciones')conditions();else home();beTrackProductOpening(r);updateCount();if(r==='tienda'&&beRestoreShop){const remembered=beShopScroll;requestAnimationFrame(()=>requestAnimationFrame(()=>{if(route()==='tienda'){window.scrollTo({top:remembered,behavior:'instant'});beShopScroll=window.scrollY||0;beSaveShopMemory()}beRestoreShop=false;}))}else{window.scrollTo({top:0,behavior:'instant'})}bePreviousRoute=r;}
 // Agrega aquí los enlaces reales de tus redes sociales cuando los tengas.
 const SOCIAL_URLS={tiktok:'https://www.tiktok.com/@brighteyescreaciones?_r=1&_t=ZS-9BQrGE3E1VF',instagram:'https://www.instagram.com/brighteyescreaciones/reels/',whatsapp:'https://wa.me/51940464715'};
 function home(){app.innerHTML=`<section class="view ref-home">
